@@ -80,6 +80,37 @@ const formatDate = (dateString) => {
   });
 };
 
+const normalizeDate = (dt) => {
+  if (!dt) return null;
+  let value = dt;
+
+  // If Dialogflow sends an array, take the first
+  if (Array.isArray(value)) {
+    value = value[0];
+  }
+
+  // If we received a JSON string, try to parse it
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("\"") && trimmed.endsWith("\""))) {
+      try {
+        value = JSON.parse(trimmed);
+      } catch {
+        // Not valid JSON; assume it's a date string already
+        return value;
+      }
+    } else {
+      return value; // plain date string
+    }
+  }
+
+  if (value && typeof value === "object") {
+    return value.date_time || value.startDateTime || value.date || null;
+  }
+
+  return null;
+};
+
 app.post("/webhook", async (req, res) => {
   const params = req.body.queryResult?.parameters;
   
@@ -90,7 +121,8 @@ app.post("/webhook", async (req, res) => {
   }
 
   const city = params.city || params["geo-city"];
-  const date = params["date-time"] || params.datetime
+  const date = normalizeDate(params["date-time"]) || normalizeDate(params.datetime);
+
   const apiKey = process.env.OPENWEATHER_API_KEY;
 
   // Validate API key
@@ -126,7 +158,13 @@ app.post("/webhook", async (req, res) => {
       }
 
       const data = await response.json();
-      const targetDate = new Date(date).toISOString().split("T")[0];
+      const parsed = new Date(date);
+      if (Number.isNaN(parsed.getTime())) {
+        return res.json({
+          fulfillmentText: "I couldn't understand the date you provided. Please try another date (e.g., 'tomorrow' or '2025-11-03').",
+        });
+      }
+      const targetDate = parsed.toISOString().split("T")[0];
       const forecast = data.list.find((item) =>
         item.dt_txt.startsWith(targetDate)
       );
