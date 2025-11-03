@@ -16,14 +16,15 @@ A minimal Express-based webhook that returns current weather information for a r
    npm install
    ```
 2. Configure OpenWeather API key:
-   - The project currently sets the API key directly in `index.js` at the line defining `apiKey`.
-   - Replace the placeholder with your own key, or refactor the code to read from an environment variable (recommended):
-     - Create a `.env` file and add `OPENWEATHER_API_KEY=your_key_here`
-     - Update `index.js` to read from `process.env.OPENWEATHER_API_KEY`
+   - Create a `.env` file in the project root with:
+     ```
+     OPENWEATHER_API_KEY=your_key_here
+     ```
+   - The app reads this via `dotenv` at startup.
 
 ### Run
 ```bash
-node index.js
+npm start
 ```
 The server starts on port `3000`.
 
