@@ -10,36 +10,49 @@ app.use(express.json());
 
 app.post("/webhook", async (req, res) => {
   const params = req.body.queryResult.parameters;
-  const city = params.city || params["geo-city"]; // ✅ Handles both cases
+  const city = params.city || params["geo-city"];
+  const date = params["date-time"];
   const apiKey = process.env.OPENWEATHER_API_KEY;
 
-  // Validate API key
-  if (!apiKey) {
-    return res
-      .status(500)
-      .json({ error: "Missing OPENWEATHER_API_KEY environment variable" });
-  }
-
-  // Validate city parameter
   if (!city) {
     return res.json({
-      fulfillmentText:
-        "Please tell me which city you'd like to know the weather for.",
+      fulfillmentText: "Please tell me which city you'd like the weather for.",
     });
   }
 
   try {
+    // If user asked for future date (forecast)
+    if (date) {
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(
+          city
+        )}&appid=${apiKey}&units=metric`
+      );
+      const data = await response.json();
+
+      // Get tomorrow’s date in YYYY-MM-DD
+      const targetDate = new Date(date).toISOString().split("T")[0];
+      const forecast = data.list.find((item) =>
+        item.dt_txt.startsWith(targetDate)
+      );
+
+      if (forecast) {
+        const weather = forecast.weather[0].description;
+        const temp = forecast.main.temp;
+        return res.json({
+          fulfillmentText: `The forecast for ${city} on ${targetDate} is ${weather} with a temperature of ${temp}°C.`,
+        });
+      }
+    }
+
+    // Otherwise, current weather
     const response = await fetch(
       `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
         city
       )}&appid=${apiKey}&units=metric`
     );
-
-    if (!response.ok) {
-      throw new Error(`Weather API error: ${response.statusText}`);
-    }
-
     const data = await response.json();
+
     const weather = data.weather[0].description;
     const temp = data.main.temp;
 
@@ -54,5 +67,6 @@ app.post("/webhook", async (req, res) => {
     });
   }
 });
+
 
 app.listen(3000, () => console.log("Server is running on port 3000"));
