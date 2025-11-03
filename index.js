@@ -1,3 +1,13 @@
+// index.js
+import dotenv from "dotenv";
+import express from "express";
+import fetch from "node-fetch";
+
+dotenv.config();
+
+const app = express();
+app.use(express.json());
+
 app.post("/webhook", async (req, res) => {
   const params = req.body.queryResult.parameters;
   const city = params.city || params["geo-city"]; // ✅ Handles both cases
@@ -44,3 +54,5 @@ app.post("/webhook", async (req, res) => {
     });
   }
 });
+
+app.listen(3000, () => console.log("Server is running on port 3000"));
